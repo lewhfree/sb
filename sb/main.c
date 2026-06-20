@@ -39,6 +39,10 @@
 
 #include "main.h"
 
+#define TRUE 1
+#define FALSE 0
+#define O_BINARY 0
+
 char *version = "9.1.2";
 char newname[80];
 char newname2[80];
@@ -72,6 +76,34 @@ int quiet = FALSE;
 int silent = TRUE;
 int bind_name = FALSE;
 int unbind_name = FALSE;
+
+void Print(char *, ...);
+void DisplayOEMInfo(void);
+void copy_file(char *, char *);
+void UnbindExec();
+void BindExec();
+void CheckIfExists(char *);
+
+int strnicmp(const char *s1, const char *s2, size_t len) {
+  /*
+  Source - https://stackoverflow.com/a/61972958
+  Posted by Dan
+  Retrieved 2026-06-20, License - CC BY-SA 4.0
+  */
+  int diff = 0;
+  while (len-- && *s1 && *s2) {
+    if (*s1 != *s2)
+      if ((diff = (int)tolower(*s1) - (int)tolower(*s2)))
+        break;
+    s1++;
+    s2++;
+  }
+  return diff;
+}
+
+int filelength(int exec_handle){
+  return 1;
+}
 
 /****************************************************************************/
 void err_open(char *str) {
@@ -289,7 +321,7 @@ void ArgInit(int argc, char *argv[]) {
 }
 
 void OpenExec(char *argv[]) {
-  int n, m;
+  int n;
 
   strcpy(filename, argv[execargn]);
   n = open_exec(filename);
@@ -373,13 +405,10 @@ int GetExtenderType(char *argv[]) {
 }
 
 /****************************************************************************/
-void main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
   int n = -1;
   int m = -1;
   int l = -1;
-  int e = -1;
-  int x, y;
-  char buf[80];
 
   ArgInit(argc, argv);
   OpenExec(argv);
@@ -451,7 +480,7 @@ void main(int argc, char *argv[]) {
     strcpy(newname, filename);
     bufptr = (char *)strchr(newname, '.');
     if (bufptr != NULL)
-      strset(bufptr, 0);
+      memset(bufptr, 0, strlen(bufptr));
     if (Main_Type == 1 || Exec_Type == 1)
       strcat(newname, ".le");
     if (Main_Type == 2 || Exec_Type == 2)
@@ -469,7 +498,7 @@ void main(int argc, char *argv[]) {
     strcpy(newname2, filename);
     bufptr2 = (char *)strchr(newname2, '.');
     if (bufptr2 != NULL)
-      strset(bufptr2, 0);
+      memset(bufptr2, 0, strlen(bufptr));
     strcat(newname2, ".exe");
   } else
     strcpy(newname2, name_bn);
@@ -482,17 +511,17 @@ void main(int argc, char *argv[]) {
       printf("SB/32A: File \"%s\" has been successfully bound\n", filename);
   } else if (n == 0)
     if (unbind) {
-      UnbindExec(argv);
+      UnbindExec();
       if (!silent)
         printf("SB/32A: File \"%s\" has been successfully unbound\n", filename);
     }
 
   close_exec();
-  exit(0);
+  return 0;
 }
 
-void UnbindExec(char *argv[]) {
-  int n, m;
+void UnbindExec() {
+  int n;
 
   Print("\n");
   Print("  Unbinding file:   \"%s\"\n", filename);
@@ -519,8 +548,8 @@ void UnbindExec(char *argv[]) {
            (float)(oldfilesize + 0.01) / (float)(filesize + 0.01) * 100);
 }
 
-void BindExec(char *argv[]) {
-  int n, m;
+void BindExec() {
+  int n;
   int stubsize;
   int execsize;
   int stubhandle;
@@ -531,7 +560,7 @@ void BindExec(char *argv[]) {
 
   CheckIfExists(newname2);
   if (Main_Type == 0)
-    UnbindExec(argv);
+    UnbindExec();
 
   Print("\n");
   Print("    Binding file:   \"%s\"\n", newname);
@@ -546,7 +575,9 @@ void BindExec(char *argv[]) {
     if (ptr == NULL)
       ptr = strchr(envname, 0);
     memset(envbuf, 0, 256);
-    strncpy(envbuf, envname, (dword)ptr - (dword)envname);
+    size_t len = (size_t)(ptr - envname);
+    strncpy(envbuf, envname, len);
+    envbuf[len] = '\0';
     strcat(envbuf, "\\BINW\\");
     strcat(envbuf, stubname);
     stubhandle = open(envbuf, O_RDWR | O_BINARY);
@@ -570,16 +601,22 @@ void BindExec(char *argv[]) {
   switch (n) {
   case -1:
     err_mem(newname);
+    break;
   case -2:
     err_rdstub();
+    break;
   case -3:
     err_read(newname);
+    break;
   case -4:
     err_crtmp();
+    break;
   case -5:
     err_wrtmp();
+    break;
   case -6:
     err_invstub();
+    break;
   }
 
   unlink(newname2);

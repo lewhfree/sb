@@ -1,5 +1,5 @@
 cc = gcc
-CFLAGS = -Wall -Wextra -pedantic -O2
+CFLAGS = -Wall -Wextra -pedantic -ansi -O2
 TARGET = sb_bin
 OBJS = sb/main.o sb/sbind.o
 
