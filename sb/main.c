@@ -43,7 +43,7 @@
 #define FALSE 0
 #define O_BINARY 0
 
-char *version = "9.1.2";
+char *version = "10.0.0";
 char newname[80];
 char newname2[80];
 char filename[80];
@@ -101,8 +101,15 @@ int strnicmp(const char *s1, const char *s2, size_t len) {
   return diff;
 }
 
-int filelength(int exec_handle){
-  return 1;
+int filelength(FILE *file_pointer) {
+  // Source - https://stackoverflow.com/a/238607
+  // Posted by Rob Walker, modified by community. See post 'Timeline' for change
+  // history Retrieved 2026-06-20, License - CC BY-SA 3.0
+
+  fseek(file_pointer, 0L, SEEK_END);
+  int size = ftell(file_pointer);
+  rewind(file_pointer);
+  return size;
 }
 
 /****************************************************************************/
@@ -575,7 +582,12 @@ void BindExec() {
     if (ptr == NULL)
       ptr = strchr(envname, 0);
     memset(envbuf, 0, 256);
-    size_t len = (size_t)(ptr - envname);
+
+    size_t len;
+    len = (size_t)(ptr - envname);
+    strncpy(envbuf, envname, len);
+    envbuf[len] = '\0';
+
     strncpy(envbuf, envname, len);
     envbuf[len] = '\0';
     strcat(envbuf, "\\BINW\\");
