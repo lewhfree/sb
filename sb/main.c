@@ -199,12 +199,6 @@ static void err_nullname(void) {
   printf("%s you must specify a file name with /BN or /UN options\n", errstr);
   exit(1);
 }
-static void err_environment(void) {
-  printf("%s DOS/32A environment variable is not set up properly\n", errstr);
-  printf(
-      "You need to reinstall DOS/32 Advanced DOS Extender on this computer\n");
-  exit(1);
-}
 
 /****************************************************************************/
 static void ShowCopyright(void) {
@@ -350,7 +344,7 @@ static void ArgInit(int argc, char *argv[]) {
 }
 
 static void OpenExec(char *argv[]) {
-  FILE* file_pointer;
+  FILE *file_pointer;
   int is_readonlyvar;
 
   strcpy(filename, argv[execargn]);
@@ -700,10 +694,6 @@ int GetFileSize(const char *name) {
     fclose(file_pointer);
   }
   return (length);
-}
-static void CheckEnvironment(void) {
-  if (getenv("DOS32A") == NULL)
-    err_environment();
 }
 void copy_file(const char *f1, const char *f2) {
   int c;
