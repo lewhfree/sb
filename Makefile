@@ -1,5 +1,19 @@
 cc = gcc
-CFLAGS = -Wall -Wextra -pedantic -ansi -O2
+CFLAGS = -std=c89 \
+    -Wall \
+    -Wextra \
+    -Wpedantic \
+    -Wstrict-prototypes \
+    -Wmissing-prototypes \
+    -Wold-style-definition \
+    -Wcast-qual \
+    -Wwrite-strings \
+    -Wshadow \
+    -Wpointer-arith \
+    -Wconversion \
+    -Wundef \
+    -Wbad-function-cast \
+    -O2
 TARGET = sb_bin
 OBJS = sb/main.o sb/sbind.o
 

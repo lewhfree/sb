@@ -1,3 +1,9 @@
+#include <stdio.h>
+#ifndef SBIND_H
+#define SBIND_H
+#include "sbind.h"
+#endif
+
 int open_exec(char *filename) {
   (void)filename;
   return 1;
@@ -9,13 +15,13 @@ int get_exec_start(void) { return 1; }
 int get_exec_type(void) { return 1; }
 int get_extender_type(void) { return 1; }
 int unbind_exec(void) { return 1; }
-int bind_exec(int stubhandle, int exechandle, int stubsize, int execsize) {
+int bind_exec(FILE* stubhandle, FILE* exechandle, int stubsize, int execsize) {
   (void)stubhandle;
   (void)exechandle;
   (void)stubsize;
   (void)execsize;
   return 1;
 }
-char *find_oem_info(void) { return ""; }
+const char *find_oem_info(void) { return ""; }
 
-short exec_handle = 1;
+FILE *exec_handle;

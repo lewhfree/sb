@@ -38,12 +38,13 @@
  */
 
 #include "main.h"
+#include "sbind.h"
 
 #define TRUE 1
 #define FALSE 0
 #define O_BINARY 0
 
-char *version = "10.0.0";
+const char *version = "10.0.0";
 char newname[80];
 char newname2[80];
 char filename[80];
@@ -53,12 +54,12 @@ char *bufptr;
 char *bufptr2;
 char *fileptr;
 
-char *stubname;
-char *stubname1 = "DOS32A.EXE";
-char *stubname2 = "STUB32A.EXE";
-char *stubname3 = "STUB32C.EXE";
-char *errstr = "SB/32A fatal:";
-char *tempname = "$$SB32$$.TMP";
+const char *stubname;
+const char *stubname1 = "DOS32A.EXE";
+const char *stubname2 = "STUB32A.EXE";
+const char *stubname3 = "STUB32C.EXE";
+const char *errstr = "SB/32A fatal:";
+const char *tempname = "$$SB32$$.TMP";
 
 int execargn = 1;
 int filesize = 0;
@@ -77,14 +78,16 @@ int silent = TRUE;
 int bind_name = FALSE;
 int unbind_name = FALSE;
 
-void Print(char *, ...);
+void Print(const char *, ...);
 void DisplayOEMInfo(void);
-void copy_file(char *, char *);
-void UnbindExec();
-void BindExec();
-void CheckIfExists(char *);
+void copy_file(const char *, const char *);
+void UnbindExec(void);
+void BindExec(void);
+void CheckIfExists(const char *);
+int GetFileSize(const char *);
+void unlink(const char *);
 
-int strnicmp(const char *s1, const char *s2, size_t len) {
+static int strnicmp(const char *s1, const char *s2, size_t len) {
   /*
   Source - https://stackoverflow.com/a/61972958
   Posted by Dan
@@ -101,83 +104,102 @@ int strnicmp(const char *s1, const char *s2, size_t len) {
   return diff;
 }
 
-int filelength(FILE *file_pointer) {
-  // Source - https://stackoverflow.com/a/238607
-  // Posted by Rob Walker, modified by community. See post 'Timeline' for change
-  // history Retrieved 2026-06-20, License - CC BY-SA 3.0
+static int filelength(FILE *file_pointer) {
+  /*
+  Source - https://stackoverflow.com/a/238607
+  Posted by Rob Walker, modified by community. See post 'Timeline' for change
+  history Retrieved 2026-06-20, License - CC BY-SA 3.0
+  */
+  long int size;
 
   fseek(file_pointer, 0L, SEEK_END);
-  int size = ftell(file_pointer);
+  size = ftell(file_pointer);
   rewind(file_pointer);
-  return size;
+  return (int)size;
+}
+
+static int is_readonly(char *fname) {
+  FILE *file = fopen(fname, "r+b");
+
+  /* real writable file */
+  if (file != NULL) {
+    fclose(file);
+    return 0;
+  }
+
+  if (errno == EACCES) {
+    return 1;
+  }
+
+  return -1;
 }
 
 /****************************************************************************/
-void err_open(char *str) {
+static void err_open(const char *str) {
   printf("%s cannot open file \"%s\"\n", errstr, str);
   exit(1);
 }
-void err_rdonly(char *str) {
+static void err_rdonly(const char *str) {
   printf("%s cannot open Read-Only file \"%s\"\n", errstr, str);
   exit(1);
 }
-void err_seek(char *str) {
+static void err_seek(const char *str) {
   printf("%s error seeking in file \"%s\"\n", errstr, str);
   exit(1);
 }
-void err_read(char *str) {
+static void err_read(const char *str) {
   printf("%s error reading from file \"%s\"\n", errstr, str);
   exit(1);
 }
-void err_support(char *str) {
+static void err_support(const char *str) {
   printf("%s unsupported exec format in file \"%s\"\n", errstr, str);
   exit(1);
 }
-void err_dest(char *str) {
+static void err_dest(const char *str) {
   printf("%s destination file \"%s\" already exists\n", errstr, str);
   exit(1);
 }
-void err_mem(char *str) {
+static void err_mem(const char *str) {
   printf("%s not enough memory to load file \"%s\"\n", errstr, str);
   exit(1);
 }
-void err_crtmp(void) {
+static void err_crtmp(void) {
   printf("%s error creating temp file\n", errstr);
   exit(1);
 }
-void err_wrtmp(void) {
+static void err_wrtmp(void) {
   printf("%s error writing to temp file\n", errstr);
   exit(1);
 }
-void err_rdstub(void) {
+static void err_rdstub(void) {
   printf("%s error reading from stub file\n", errstr);
   exit(1);
 }
-void err_invstub(void) {
+static void err_invstub(void) {
   printf("%s invalid stub file format\n", errstr);
   exit(1);
 }
-void err_nod32a(void) {
+static void err_nod32a(void) {
   printf("%s cannot find file \"DOS32A.EXE\"\n", errstr);
   exit(1);
 }
-void err_nostub(char *str) {
+static void err_nostub(const char *str) {
   printf("%s cannot find file \"%s\"\n", errstr, str);
   exit(1);
 }
-void err_arg(char *str) {
+static void err_arg(const char *str) {
   printf("%s invalid or misplaced command or option \"%s\"\n", errstr, str);
   exit(1);
 }
-void err_sameact(void) {
+static void err_sameact(void) {
   printf("%s cannot Bind and Unbind at the same time\n", errstr);
   exit(1);
 }
-void err_nullname(void) {
+static void err_nullname(void) {
   printf("%s you must specify a file name with /BN or /UN options\n", errstr);
   exit(1);
 }
-void err_environment(void) {
+static void err_environment(void) {
   printf("%s DOS/32A environment variable is not set up properly\n", errstr);
   printf(
       "You need to reinstall DOS/32 Advanced DOS Extender on this computer\n");
@@ -185,16 +207,16 @@ void err_environment(void) {
 }
 
 /****************************************************************************/
-void ShowCopyright() {
+static void ShowCopyright(void) {
   Print("SB/32A -- Bind Utility version %s\n", version);
   Print("Copyright (C) 1996-2006 by Narech K.\n");
 }
 
-void ArgInit(int argc, char *argv[]) {
+static void ArgInit(int argc, char *argv[]) {
   int n, m;
   int argn = 14;
-  char *args[] = {"bs", "bc", "bn", "rs", "rc", "un", "b",
-                  "r",  "u",  "o",  "q",  "s",  "h",  "?"};
+  const char *args[] = {"bs", "bc", "bn", "rs", "rc", "un", "b",
+                        "r",  "u",  "o",  "q",  "s",  "h",  "?"};
 
   execargn = 1;
 
@@ -327,7 +349,7 @@ void ArgInit(int argc, char *argv[]) {
   }
 }
 
-void OpenExec(char *argv[]) {
+static void OpenExec(char *argv[]) {
   int n;
 
   strcpy(filename, argv[execargn]);
@@ -368,7 +390,7 @@ void OpenExec(char *argv[]) {
 }
 
 /****************************************************************************/
-int GetExecType(char *argv[]) {
+static int GetExecType(char *argv[]) {
   int n;
 
   n = check_if_unbound_exec();
@@ -383,7 +405,7 @@ int GetExecType(char *argv[]) {
   return (n);
 }
 
-int FindExecType(char *argv[]) {
+static int FindExecType(char *argv[]) {
   int n;
 
   n = get_exec_start();
@@ -401,7 +423,7 @@ int FindExecType(char *argv[]) {
   return (n);
 }
 
-int GetExtenderType(char *argv[]) {
+static int GetExtenderType(char *argv[]) {
   int n;
 
   n = get_extender_type();
@@ -513,7 +535,7 @@ int main(int argc, char *argv[]) {
   if (bind == TRUE && unbind == TRUE)
     err_sameact();
   if (bind) {
-    BindExec(argv);
+    BindExec();
     if (!silent)
       printf("SB/32A: File \"%s\" has been successfully bound\n", filename);
   } else if (n == 0)
@@ -527,7 +549,7 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
-void UnbindExec() {
+void UnbindExec(void) {
   int n;
 
   Print("\n");
@@ -555,15 +577,16 @@ void UnbindExec() {
            (float)(oldfilesize + 0.01) / (float)(filesize + 0.01) * 100);
 }
 
-void BindExec() {
+void BindExec(void) {
   int n;
   int stubsize;
   int execsize;
-  int stubhandle;
-  int exechandle;
+  FILE *stubhandle;
+  FILE *exechandle;
   char *ptr;
   char *envname;
   char envbuf[256];
+  size_t len;
 
   CheckIfExists(newname2);
   if (Main_Type == 0)
@@ -573,8 +596,8 @@ void BindExec() {
   Print("    Binding file:   \"%s\"\n", newname);
   Print("Destination file:   \"%s\"\n", newname2);
 
-  stubhandle = open(stubname, O_RDWR | O_BINARY);
-  if (stubhandle == -1) {
+  stubhandle = fopen(stubname, "r+b");
+  if (stubhandle == NULL) {
     envname = getenv("DOS32A");
     if (envname == 0)
       err_nod32a();
@@ -583,7 +606,6 @@ void BindExec() {
       ptr = strchr(envname, 0);
     memset(envbuf, 0, 256);
 
-    size_t len;
     len = (size_t)(ptr - envname);
     strncpy(envbuf, envname, len);
     envbuf[len] = '\0';
@@ -592,22 +614,22 @@ void BindExec() {
     envbuf[len] = '\0';
     strcat(envbuf, "\\BINW\\");
     strcat(envbuf, stubname);
-    stubhandle = open(envbuf, O_RDWR | O_BINARY);
+    stubhandle = fopen(envbuf, "r+b");
 
-    if (stubhandle == -1)
+    if (stubhandle == NULL)
       err_nostub(envbuf);
   }
   stubsize = filelength(stubhandle);
 
-  exechandle = open(newname, O_RDWR | O_BINARY);
-  if (exechandle == -1)
+  exechandle = fopen(newname, "r+b");
+  if (exechandle == NULL)
     err_open(newname);
 
   execsize = filelength(exechandle);
 
   n = bind_exec(stubhandle, exechandle, stubsize, execsize);
-  close(exechandle);
-  close(stubhandle);
+  fclose(exechandle);
+  fclose(stubhandle);
   unlink(newname);
   close_exec();
   switch (n) {
@@ -644,40 +666,40 @@ void BindExec() {
 }
 
 /****************************************************************************/
-void Print(char *format, ...) {
+void Print(const char *format, ...) {
   va_list arglist;
   char buffer[1024];
   if (quiet == FALSE) {
     va_start(arglist, format);
     vsprintf(buffer, format, arglist);
-    printf(buffer);
+    printf("%s", buffer);
     va_end(arglist);
   }
 }
-void CheckIfExists(char *name) {
-  int n;
-  n = open(name, O_RDWR | O_BINARY);
-  if (n != -1) {
-    close(n);
+void CheckIfExists(const char *name) {
+  FILE *file_pointer;
+  file_pointer = fopen(name, "r+b");
+  if (file_pointer != NULL) {
+    fclose(file_pointer);
     if (!overwrite)
       err_dest(name);
   }
 }
-int GetFileSize(char *name) {
-  int n;
-  int m = 0;
-  n = open(name, O_RDWR | O_BINARY);
-  if (n != -1) {
-    m = filelength(n);
-    close(n);
+int GetFileSize(const char *name) {
+  FILE *file_pointer;
+  int length = 0;
+  file_pointer = fopen(name, "r+b");
+  if (file_pointer != NULL) {
+    length = filelength(file_pointer);
+    fclose(file_pointer);
   }
-  return (m);
+  return (length);
 }
-void CheckEnvironment() {
+static void CheckEnvironment(void) {
   if (getenv("DOS32A") == NULL)
     err_environment();
 }
-void copy_file(char *f1, char *f2) {
+void copy_file(const char *f1, const char *f2) {
   int c;
   FILE *src;
   FILE *dest;
@@ -697,9 +719,9 @@ void copy_file(char *f1, char *f2) {
   }
 }
 
-void DisplayOEMInfo() {
+void DisplayOEMInfo(void) {
 
-  char *ptr;
+  const char *ptr;
 
   if ((ptr = find_oem_info()) == NULL)
     return;

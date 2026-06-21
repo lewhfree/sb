@@ -38,22 +38,10 @@
  */
 
 #include <ctype.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-
-extern int open_exec(char *);
-extern void close_exec(void);
-
-extern int check_if_unbound_exec(void);
-extern int get_exec_start(void);
-extern int get_exec_type(void);
-extern int get_extender_type(void);
-extern int unbind_exec(void);
-extern int bind_exec(int, int, int, int);
-extern char *find_oem_info(void);
-
-extern short exec_handle;
+#include <string.h>
