@@ -4,9 +4,9 @@
 #include "sbind.h"
 #endif
 
-int open_exec(char *filename) {
+FILE* open_exec(char *filename) {
   (void)filename;
-  return 1;
+  return NULL;
 }
 void close_exec(void) { return; }
 

@@ -350,42 +350,48 @@ static void ArgInit(int argc, char *argv[]) {
 }
 
 static void OpenExec(char *argv[]) {
-  int n;
+  FILE* file_pointer;
+  int is_readonlyvar;
 
   strcpy(filename, argv[execargn]);
-  n = open_exec(filename);
+  is_readonlyvar = is_readonly(filename);
+  file_pointer = open_exec(filename);
 
-  if (n == -2)
+  if (is_readonlyvar == 1)
     err_rdonly(argv[execargn]);
-  if (n != 0) {
+  if (file_pointer != 0) {
     strcpy(filename, argv[execargn]);
     strcat(filename, ".exe");
-    n = open_exec(filename);
-    if (n == -2)
+    is_readonlyvar = is_readonly(filename);
+    file_pointer = open_exec(filename);
+    if (is_readonlyvar == 1)
       err_rdonly(argv[execargn]);
-    if (n != 0) {
+    if (file_pointer != 0) {
       strcpy(filename, argv[execargn]);
       strcat(filename, ".le");
-      n = open_exec(filename);
-      if (n == -2)
+      is_readonlyvar = is_readonly(filename);
+      file_pointer = open_exec(filename);
+      if (is_readonlyvar == 1)
         err_rdonly(argv[execargn]);
-      if (n != 0) {
+      if (file_pointer != 0) {
         strcpy(filename, argv[execargn]);
         strcat(filename, ".lx");
-        n = open_exec(filename);
-        if (n == -2)
+        is_readonlyvar = is_readonly(filename);
+        file_pointer = open_exec(filename);
+        if (is_readonlyvar == 1)
           err_rdonly(argv[execargn]);
-        if (n != 0) {
+        if (file_pointer != NULL) {
           strcpy(filename, argv[execargn]);
           strcat(filename, ".lc");
-          n = open_exec(filename);
-          if (n == -2)
+          is_readonlyvar = is_readonly(filename);
+          file_pointer = open_exec(filename);
+          if (is_readonlyvar == 1)
             err_rdonly(argv[execargn]);
         }
       }
     }
   }
-  if (n == -1)
+  if (file_pointer == NULL)
     err_open(argv[execargn]);
 }
 

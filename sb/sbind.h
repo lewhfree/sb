@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-int open_exec(char *);
+FILE* open_exec(char *);
 void close_exec(void);
 
 int check_if_unbound_exec(void);
