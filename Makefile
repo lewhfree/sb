@@ -1,5 +1,5 @@
-cc = gcc
-CFLAGS = -std=c89 \
+cc = clang
+CFLAGS = -std=c99 \
     -Wall \
     -Wextra \
     -Wpedantic \
